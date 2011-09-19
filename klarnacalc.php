@@ -25,7 +25,7 @@
  *  The views and conclusions contained in the software and documentation are those of the
  *  authors and should not be interpreted as representing official policies, either expressed
  *  or implied, of KLARNA AB.
- * 
+ *
  * @package KlarnaAPI
  */
 
@@ -51,6 +51,8 @@
  * overestimate the APR and all examples in EU law uses whole months as well.
  *
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
@@ -357,24 +359,6 @@ class KlarnaCalc {
     }
 
     /**
-     * This tries to pay the absolute minimum each month.
-     * Give the absolute worst APR.
-     * Don't export, only here for reference.
-     *
-     * @param  float  $pval    principal value
-     * @param  float  $rate    interest rate in % as before
-     * @param  float  $fee     monthly fee
-     * @param  float  $minpay  minimum payment per month
-     * @return float  APR in %
-     */
-    private static function apr_min($pval, $rate, $fee, $minpay) {
-        $payarray = self::fulpacc($pval, $rate, $fee, $minpay, 0.0, -1, true);
-        $apr = self::irr2apr(self::irr($pval, $payarray, 1));
-
-        return $apr;
-    }
-
-    /**
      * Calculates APR for a campaign where you give $free months to
      * the client and there is no interest on the first invoice.
      * The only new input is $free, and if you give "Pay in Jan"
@@ -390,8 +374,8 @@ class KlarnaCalc {
      * @param  float  $payment monthly payment for client
      * @param  float  $rate    interest rate in % as before
      * @param  float  $fee     monthly fee
-     * @param  int    $free    free months
      * @param  float  $minpay  minimum payment per month
+     * @param  int    $free    free months
      * @return float  APR in %
      */
     private static function apr_payin_X_months($pval, $payment, $rate, $fee, $minpay, $free) {
@@ -402,7 +386,6 @@ class KlarnaCalc {
         }
 
         $months = ceil($months);
-        $newpval = $pval - $firstpay;
         $farray = array();
         while($free--) {
             $farray[] = 0.0;
@@ -436,8 +419,8 @@ class KlarnaCalc {
         $startfee = (($flags === KlarnaFlags::CHECKOUT_PAGE) ? $pclass->getStartFee() : 0);
 
         //Include start fee in sum
-        $sum += $startfee; 
-        
+        $sum += $startfee;
+
         $base = ($pclass->getType() === KlarnaPClass::ACCOUNT);
 
         $lowest = self::get_lowest_payment_for_account($pclass->getCountry());
@@ -449,10 +432,10 @@ class KlarnaCalc {
         }
 
         $payment = self::annuity($sum, $pclass->getMonths(), $pclass->getInterestRate());
-        
+
         //Add monthly fee
         $payment += $monthsfee;
-        
+
         return  self::fulpacc($sum, $pclass->getInterestRate(), $monthsfee, $minpay, $payment, $pclass->getMonths(), $base);
     }
 
@@ -505,7 +488,7 @@ class KlarnaCalc {
 
         //Include start fee in sum
         $sum += $startfee;
-        
+
         $lowest = self::get_lowest_payment_for_account($pclass->getCountry());
         if($flags == KlarnaFlags::CHECKOUT_PAGE) {
             $minpay = ($pclass->getType() === KlarnaPClass::ACCOUNT) ? $lowest : 0;
@@ -515,7 +498,8 @@ class KlarnaCalc {
         }
 
         //add monthly fee
-        $payment = self::annuity($sum, $pclass->getMonths(), $pclass->getInterestRate()) + $monthsfee; 
+        $payment = self::annuity($sum, $pclass->getMonths(), $pclass->getInterestRate()) + $monthsfee;
+        //echo "annuity $payment, $sum " . $pclass->getMonths() . " " . $pclass->getInterestRate() . "\n";
 
         $type = $pclass->getType();
         switch($type) {
@@ -539,7 +523,7 @@ class KlarnaCalc {
     /**
      * Calculates the total credit purchase cost.<br>
      * The result is rounded up, depending on the pclass country.<br>
-     * 
+     *
      * <b>Flags can be either</b>:<br>
      * {@link KlarnaFlags::CHECKOUT_PAGE}<br>
      * {@link KlarnaFlags::PRODUCT_PAGE}<br>
@@ -568,16 +552,15 @@ class KlarnaCalc {
         if(!is_numeric($flags) || !in_array($flags, array(KlarnaFlags::CHECKOUT_PAGE, KlarnaFlags::PRODUCT_PAGE))) {
             throw new KlarnaException('Error in ' . __METHOD__ . ': Flags argument invalid!');
         }
-        
-        $startfee = (($flags === KlarnaFlags::CHECKOUT_PAGE) ? $pclass->getStartFee() : 0);
+
         $payarr = self::get_payarr($sum, $pclass, $flags);
 
         $credit_cost = 0;
         foreach($payarr as $pay) {
             $credit_cost += $pay;
         }
-        
-        return self::pRound($credit_cost+$startfee, $pclass->getCountry());
+
+        return self::pRound($credit_cost, $pclass->getCountry());
     }
 
     /**
@@ -595,7 +578,7 @@ class KlarnaCalc {
      *     </ul></li>
      *     <li>
      *         In checkout, round the monthly cost to have 2 decimals.<br>
-     *         For example “10.57 SEK/per månad”
+     *         For example 10.57 SEK/per m�nad
      *     </li>
      * </ul>
      *
@@ -627,10 +610,10 @@ class KlarnaCalc {
         if(!is_numeric($flags) || !in_array($flags, array(KlarnaFlags::CHECKOUT_PAGE, KlarnaFlags::PRODUCT_PAGE))) {
             throw new KlarnaException('Error in ' . __METHOD__ . ': Flags argument invalid!');
         }
-        
+
         $payarr = self::get_payarr($sum, $pclass, $flags);
         $value = isset($payarr[0]) ? ($payarr[0]) : 0;
-        return (KlarnaFlags::CHECKOUT_PAGE) ? round($value, 2) : self::pRound($value, $pclass->getCountry());
+        return (KlarnaFlags::CHECKOUT_PAGE == $flags) ? round($value, 2) : self::pRound($value, $pclass->getCountry());
     }
 
     /**
@@ -675,12 +658,13 @@ class KlarnaCalc {
     public static function pRound($value, $country) {
         $multiply = 1; //Round to closest integer
         switch($country) {
+            case KlarnaCountry::FI:
             case KlarnaCountry::DE:
             case KlarnaCountry::NL:
                 $multiply = 10; //Round to closest decimal
                 break;
         }
-        
+
         return floor(($value*$multiply)+0.5)/$multiply;
     }
 

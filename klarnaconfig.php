@@ -53,6 +53,8 @@
  * debug       - Normal debugging (bool)
  *
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
@@ -67,7 +69,7 @@ class KlarnaConfig implements ArrayAccess {
     protected $options;
 
     /**
-     * If set to true, saves and loads the config.
+     * If set to true, saves the config.
      *
      * @var bool
      */
@@ -90,8 +92,8 @@ class KlarnaConfig implements ArrayAccess {
      */
     public function __construct($file = null) {
         $this->options = array();
-        if(self::$store) {
-            $this->file = (strlen($file) > 0) ? $file : dirname(__FILE__).'/config.json';
+        if($file) {
+            $this->file = $file;
             if(is_readable($this->file)) {
                 $this->options = json_decode(file_get_contents($this->file), true);
             }
@@ -113,7 +115,7 @@ class KlarnaConfig implements ArrayAccess {
      * Saves specified file, or default file, if {@link KlarnaConfig::$store} is set to true.
      */
     public function __destruct() {
-        if(self::$store) {
+        if(self::$store && $this->file) {
             if((!file_exists($this->file) && is_writable(dirname($this->file))) || is_writable($this->file)) {
                 file_put_contents($this->file, json_encode($this->options));
             }

@@ -30,11 +30,18 @@
  */
 
 /**
+ * Include the {@link PCStorage} interface.
+ */
+require_once('storage.intf.php');
+
+/**
  * XML storage class for KlarnaPClass
  *
  * This class is an XML implementation of the PCStorage interface.
  *
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
@@ -177,10 +184,10 @@ class XMLStorage extends PCStorage {
             $this->checkURI($uri);
 
             //Reset DOMDocument.
-            if(!$this->dom->loadXML("<?xml version='$this->version' encoding='$this->encoding'?><klarna/>")) {
+            if(!$this->dom->loadXML("<?xml version='$this->version' encoding='$this->encoding'?"."><klarna/>")) {
                 throw new Exception('Failed to load initial XML.');
             }
-            
+
             ksort($this->pclasses, SORT_NUMERIC);
             $xpath = new DOMXpath($this->dom);
             foreach($this->pclasses as $eid => $pclasses) {
@@ -194,8 +201,8 @@ class XMLStorage extends PCStorage {
                 else {
                     $estore = $estore->item(0);
                 }
-                
-                foreach($pclasses as $pid => $pclass) {
+
+                foreach($pclasses as $pclass) {
                     if($eid != $pclass->getEid()) {
                         continue; //This should never occur.
                     }

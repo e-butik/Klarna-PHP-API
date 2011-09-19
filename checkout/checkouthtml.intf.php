@@ -37,6 +37,8 @@
  *
  * @ignore    Do not show in PHPDoc.
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */

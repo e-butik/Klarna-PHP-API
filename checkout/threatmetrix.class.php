@@ -35,6 +35,8 @@
  *
  * @ignore    Do not show in PHPDoc.
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
@@ -129,10 +131,10 @@ class ThreatMetrix extends CheckoutHTML {
      * @see CheckoutHTML::toHTML()
      */
     public function toHTML() {
-        return "<p style=\"background:url($this->proto://$this->host/fp/clear.png?org_id=$this->orgID&session_id=$this->sessionID&m=1)\"></p>
+        return "<p style=\"display: none; background:url($this->proto://$this->host/fp/clear.png?org_id=$this->orgID&session_id=$this->sessionID&m=1)\"></p>
         <script src=\"$this->proto://$this->host/fp/check.js?org_id=$this->orgID&session_id=$this->sessionID\" type=\"text/javascript\"></script>
         <img src=\"$this->proto://$this->host/fp/clear.png?org_id=$this->orgID&session_id=$this->sessionID&m=2\" alt=\"\" >
-        <object type=\"application/x-shockwave-flash\" data=\"$this->proto://$this->host/fp/fp.swf?org_id=$this->orgID&session_id=$this->sessionID\" width=\"1\" height=\"1\" id=\"obj_id\">
+        <object type=\"application/x-shockwave-flash\" style=\"display: none\" data=\"$this->proto://$this->host/fp/fp.swf?org_id=$this->orgID&session_id=$this->sessionID\" width=\"1\" height=\"1\" id=\"obj_id\">
             <param name=\"movie\" value=\"$this->proto://$this->host/fp/fp.swf?org_id=$this->orgID&session_id=$this->sessionID\" />
             <div></div>
         </object>";

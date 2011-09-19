@@ -30,11 +30,18 @@
  */
 
 /**
+ * Include the {@link PCStorage} interface.
+ */
+require_once('storage.intf.php');
+
+/**
  * JSON storage class for KlarnaPClass
  *
  * This class is an JSON implementation of the PCStorage interface.
  *
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
@@ -103,9 +110,9 @@ class JSONStorage extends PCStorage {
             }
             $arr = json_decode(file_get_contents($uri), true);
             if(count($arr) > 0)  {
-                foreach($arr as $eid => $pclasses) {
+                foreach($arr as $pclasses) {
                     if(count($pclasses) > 0) {
-                        foreach($pclasses as $pid => $pclass) {
+                        foreach($pclasses as $pclass) {
                             $this->addPClass(new KlarnaPClass($pclass));
                         }
                     }
@@ -125,7 +132,7 @@ class JSONStorage extends PCStorage {
             $this->checkURI($uri);
             $output = array();
             foreach($this->pclasses as $eid => $pclasses) {
-                foreach($pclasses as $pid => $pclass) {
+                foreach($pclasses as $pclass) {
                     if(!isset($output[$eid])) {
                         $output[$eid] = array();
                     }

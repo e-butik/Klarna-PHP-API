@@ -35,13 +35,15 @@
  * PClasses are used in conjunction with KlarnaCalc to determine part payment costs.
  *
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
 class KlarnaPClass {
 
     /**
-     * Invoice identifier, used for invoice purchases.
+     * Invoice type/identifier, used for invoice purchases.
      *
      * @var int
      */
@@ -175,7 +177,7 @@ class KlarnaPClass {
     /**
      * Expire date / valid until date as unix timestamp.<br>
      * Compare it with e.g. $_SERVER['REQUEST_TIME'].<br>
-     * 
+     *
      * @ignore Do not show in PHPDoc.
      * @var int
      */
@@ -188,7 +190,7 @@ class KlarnaPClass {
      * @var int
      */
     protected $eid;
-    
+
     /**
      * Class constructor
      *
@@ -251,6 +253,7 @@ class KlarnaPClass {
                     case "8":
                     case "country":
                         $this->setCountry($val);
+                        break;
                     case "9":
                     case "type":
                         $this->setType($val);
@@ -424,12 +427,12 @@ class KlarnaPClass {
 
     /**
      * Merchant ID or Estore ID connected to this PClass.
-     * 
+     *
      * @param  int  $eid Merchant ID.
      * @return void
      */
     public function setEid($eid) {
-        $this->eid = $eid;
+        $this->eid = intval($eid);
     }
 
     /**
@@ -439,15 +442,15 @@ class KlarnaPClass {
      * @return bool
      */
     public function isValid($now = null) {
-        if($this->expire === null || $this->expire == '-') {
+        if($this->expire == null || $this->expire == '-' || $this->expire <= 0) {
             //No expire, or unset? assume valid.
-            return true; 
+            return true;
         }
-        
+
         if($now === null || !is_numeric($now)) {
             $now = time();
         }
-        
+
         //If now is before expire, it is still valid.
         return ($now > $this->expire) ? false : true;
     }

@@ -30,6 +30,11 @@
  */
 
 /**
+ * Include the {@link PCStorage} interface.
+ */
+require_once('storage.intf.php');
+
+/**
  * MySQL storage class for KlarnaPClass
  *
  * This class is an MySQL implementation of the PCStorage interface.<br>
@@ -44,9 +49,26 @@
  * DB name:  [A-Za-z0-9_]<br>
  * DB table: [A-Za-z0-9_]<br>
  *
- * @package   KlarnaAPI
- * @link      http://integration.klarna.com/
- * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
+ * To allow for more special characters, and to avoid having<br>
+ * a regular expression that is too hard to understand, you can<br>
+ * use an associative array:<br>
+ * <code>
+ * array(
+ *   "user" => "myuser",
+ *   "passwd" => "mypass",
+ *   "dsn" => "localhost",
+ *   "db" => "mydatabase",
+ *   "table" => "mytable"
+ * );
+ * </code>
+ *
+ * @package     KlarnaAPI
+ * @deprecated  Deprecated since 2.1, better to use PDO based SQLStorage
+ * @see         SQLStorage
+ * @version     2.1.2
+ * @since       2011-09-13
+ * @link        http://integration.klarna.com/
+ * @copyright   Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
 class MySQLStorage extends PCStorage {
 
@@ -125,7 +147,7 @@ class MySQLStorage extends PCStorage {
             throw new Exception('Failed to connect to database! ('.mysql_error().')');
         }
 
-        if(!mysql_query('CREATE DATABASE IF NOT EXISTS '.$this->dbName, $this->link)) {
+        if(!mysql_query('CREATE DATABASE IF NOT EXISTS `'.$this->dbName.'`', $this->link)) {
             throw new Exception('Database not existing, failed to create! ('.mysql_error().')');
         }
 
@@ -134,16 +156,16 @@ class MySQLStorage extends PCStorage {
                     `eid` int(10) unsigned NOT NULL,
                     `id` int(10) unsigned NOT NULL,
                     `type` tinyint(4) NOT NULL,
-                    `desc` varchar(255) NOT NULL,
+                    `description` varchar(255) NOT NULL,
                     `months` int(11) NOT NULL,
-                    `interestrate` int(11) NOT NULL,
-                    `invoicefee` int(11) NOT NULL,
-                    `startfee` int(11) NOT NULL,
-                    `minamount` int(11) NOT NULL,
+                    `interestrate` decimal(11,2) NOT NULL,
+                    `invoicefee` decimal(11,2) NOT NULL,
+                    `startfee` decimal(11,2) NOT NULL,
+                    `minamount` decimal(11,2) NOT NULL,
                     `country` int(11) NOT NULL,
                     `expire` int(11) NOT NULL,
                     KEY `id` (`id`)
-                )", $this->link //@TODO add expire, unix timestamp stored as int? always in GMT?
+                )", $this->link
         );
 
         if(!$create) {
@@ -154,13 +176,33 @@ class MySQLStorage extends PCStorage {
     /**
      * Splits the URI in format: user:passwd@addr/dbName.dbTable<br>
      *
+     * To allow for more special characters, and to avoid having<br>
+     * a regular expression that is too hard to understand, you can<br>
+     * use an associative array:<br>
+     * <code>
+     * array(
+     *   "user" => "myuser",
+     *   "passwd" => "mypass",
+     *   "dsn" => "localhost",
+     *   "db" => "mydatabase",
+     *   "table" => "mytable"
+     * );
+     * </code>
+     *
      * @ignore Do not show in PHPDoc.
-     * @param  string $uri Specified URI to database and table.
+     * @param  string|array $uri Specified URI to database and table.
      * @throws Exception
      * @return void
      */
     protected function splitURI($uri) {
-        if(preg_match('/^([\w]+):([\w]+)@([\w\.]+|[\w\.]+:[\d]+)\/([\w]+).([\w]+)$/', $uri, $arr) === 1) {
+        if(is_array($uri)) {
+            $this->user = $uri['user'];
+            $this->passwd = $uri['passwd'];
+            $this->addr = $uri['dsn'];
+            $this->dbName = $uri['db'];
+            $this->dbTable = $uri['table'];
+        }
+        else if(preg_match('/^([\w-]+):([\w-]+)@([\w\.-]+|[\w\.-]+:[\d]+)\/([\w-]+).([\w-]+)$/', $uri, $arr) === 1) {
             /*
               [0] => user:passwd@addr/dbName.dbTable
               [1] => user
@@ -209,18 +251,21 @@ class MySQLStorage extends PCStorage {
     public function save($uri) {
         try {
             $this->splitURI($uri);
-            $this->clear($uri);
-            $this->connect();
 
-            foreach($this->pclasses as $eid => $pclasses) {
-                foreach($pclasses as $pid => $pclass) {
+            $this->connect();
+            if(!is_array($this->pclasses) || count($this->pclasses) == 0) {
+                return;
+            }
+
+            foreach($this->pclasses as $pclasses) {
+                foreach($pclasses as $pclass) {
                     //Remove the pclass if it exists.
-                    mysql_query("DELETE FROM `".$this->dbName.'`.`'.$this->dbTable."` WHERE `id` = '".$pclass->getId()." AND `eid` = '".$pclass->getEid()."'");
+                    mysql_query("DELETE FROM `".$this->dbName.'`.`'.$this->dbTable."` WHERE `id` = '".$pclass->getId()."' AND `eid` = '".$pclass->getEid()."'");
 
                     //Insert it again.
                     $result = mysql_query(
                         "INSERT INTO `".$this->dbName.'`.`'.$this->dbTable."`
-                           (`eid`, `id`, `type`, `desc`, `months`, `interestrate`, `invoicefee`, `startfee`, `minamount`, `country`, `expire`)
+                           (`eid`, `id`, `type`, `description`, `months`, `interestrate`, `invoicefee`, `startfee`, `minamount`, `country`, `expire`)
                          VALUES
                            ('".$pclass->getEid()."',
                             '".$pclass->getId()."',
@@ -232,7 +277,7 @@ class MySQLStorage extends PCStorage {
                             '".$pclass->getStartFee()."',
                             '".$pclass->getMinAmount()."',
                             '".$pclass->getCountry()."',
-                            '".$pclass->getExpire()."')", $this->link //@TODO add expire
+                            '".$pclass->getExpire()."')", $this->link
                     );
                     if($result === false) {
                         throw new Exception('INSERT INTO query failed! ('.mysql_error().')');
@@ -251,10 +296,10 @@ class MySQLStorage extends PCStorage {
     public function clear($uri) {
         try {
             $this->splitURI($uri);
+            unset($this->pclasses);
             $this->connect();
-            //@TODO drop or delete from?
-            mysql_query("DROP TABLE `".$this->dbName."`.`".$this->dbTable."`", $this->link);
-            //mysql_query("DELETE FROM `".$this->dbName."`.`".$this->dbTable."`", $this->link);
+
+            mysql_query("DELETE FROM `".$this->dbName."`.`".$this->dbTable."`", $this->link);
         }
         catch(Exception $e) {
             throw new KlarnaException("Error in " . __METHOD__ . ": " . $e->getMessage());

@@ -33,6 +33,8 @@
  * KlarnaAddr is an object of convenience, to parse and create addresses.
  *
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
@@ -146,7 +148,7 @@ class KlarnaAddr {
 
     /**
      * When using {@link Klarna::getAddresses()} this might be guessed depending on type used.<br>
-     * 
+     *
      * Signifies if address is for a company or a private person.<br>
      * If isCompany is null, then it is unknown and will be assumed to be a private person.<br>
      *
@@ -178,6 +180,18 @@ class KlarnaAddr {
      */
     public function __construct($email = null, $telno = null, $cellno = null, $fname = null, $lname = null,
             $careof = "", $street = null, $zip = null, $city = null, $country = null, $houseNo = "", $houseExt = "") {
+
+        //Set all string values to ""
+        $this->company = "";
+        $this->telno = "";
+        $this->careof = "";
+        $this->cellno = "";
+        $this->city = "";
+        $this->email = "";
+        $this->fname = "";
+        $this->lname = "";
+        $this->zip = "";
+
         if($email !== null) {
             $this->setEmail($email);
         }
@@ -212,7 +226,7 @@ class KlarnaAddr {
 
     /**
      * Returns the email address.
-     * 
+     *
      * @return string
      */
     public function getEmail() {
@@ -227,7 +241,7 @@ class KlarnaAddr {
      */
     public function setEmail($email) {
         if(!is_string($email)) {
-            $telno = strval($email);
+            $email = strval($email);
         }
         if(strlen($email) == 0) {
             throw new KlarnaException("Error in " . __METHOD__ . ': Email address not specified!');
@@ -268,7 +282,7 @@ class KlarnaAddr {
 
     /**
      * Sets the cellphone number.
-     * 
+     *
      * @param  string $cellno
      * @return void
      */
@@ -332,7 +346,7 @@ class KlarnaAddr {
     /**
      * Returns the company name.
      *
-     * @return string 
+     * @return string
      */
     public function getCompanyName() {
         return $this->company;
@@ -517,7 +531,7 @@ class KlarnaAddr {
     }
 
     /**
-     * Sets the house number.<br>
+     * Returns the house number.<br>
      * Only used in Germany and Netherlands.<br>
      *
      * @return string

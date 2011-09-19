@@ -35,13 +35,15 @@
  * This class provides an interface with which to save the PClasses easily.
  *
  * @package   KlarnaAPI
+ * @version   2.1.2
+ * @since     2011-09-13
  * @link      http://integration.klarna.com/
  * @copyright Copyright (c) 2010 Klarna AB (http://klarna.com)
  */
 abstract class PCStorage {
 
     /**
-     * An array of KlarnaPClasses with pclass ID as key.
+     * An array of KlarnaPClasses.
      *
      * @ignore Do not show in PHPDoc.
      * @var array
@@ -77,25 +79,31 @@ abstract class PCStorage {
     /**
      * Gets the PClass by ID.
      *
-     * @param  int  $id  PClass ID.
+     * @param  int  $id       PClass ID.
+     * @param  int  $eid      Merchant ID.
+     * @param  int  $country  {@link KlarnaCountry Country} constant.
      * @throws KlarnaException
      * @return KlarnaPClass
      */
-    public function getPClass($id, $eid) {
+    public function getPClass($id, $eid, $country) {
         if(!is_int($id)) {
-            throw new KlarnaException('Error in ' . __METHOD__ . ': Supplied ID is not an integer!');
+            throw new Exception('Supplied ID is not an integer!');
         }
 
         if(!is_array($this->pclasses)) {
-            throw new KlarnaException('Error in ' . __METHOD__ . ': No match for that eid!');
+            throw new Exception('No match for that eid!');
         }
 
         if(!isset($this->pclasses[$eid]) || !is_array($this->pclasses[$eid])) {
-            throw new KlarnaException('Error in ' . __METHOD__ . ': No match for that eid!');
+            throw new Exception('No match for that eid!');
         }
 
         if(!isset($this->pclasses[$eid][$id]) || !$this->pclasses[$eid][$id]->isValid()) {
-            throw new KlarnaException('Error in ' . __METHOD__ . ': No such pclass available!');
+            throw new Exception('No such pclass available!');
+        }
+
+        if($this->pclasses[$eid][$id]->getCountry() !== $country) {
+            throw new Exception('You cannot use this pclass with set country!');
         }
 
         return $this->pclasses[$eid][$id];
@@ -112,14 +120,15 @@ abstract class PCStorage {
      * {@link KlarnaPClass::DELAY}<br>
      * {@link KlarnaPClass::MOBILE}<br>
      *
+     * @param  int   $eid     Merchant ID.
      * @param  int   $country {@link KlarnaCountry Country} constant.
      * @param  int   $type    PClass type identifier.
      * @throws KlarnaException
      * @return array An array of {@link KlarnaPClass PClasses}.
      */
-    public function getPClasses($country, $type = null) {
+    public function getPClasses($eid, $country, $type = null) {
         if(!is_int($country)) {
-            throw new KlarnaException('Error in ' . __METHOD__ . ': You need to specify a country!');
+            throw new Exception('You need to specify a country!');
         }
 
         $tmp = false;
@@ -127,18 +136,12 @@ abstract class PCStorage {
             $tmp = array();
             foreach($this->pclasses as $eid => $pclasses) {
                 $tmp[$eid] = array();
-                foreach($pclasses as $pid => $pclass) {
+                foreach($pclasses as $pclass) {
                     if(!$pclass->isValid()) {
                         continue; //Pclass invalid, skip it.
                     }
-                    
-                    if($type === null) {
-                        if($pclass->getCountry() === $country) {
-                            $tmp[$eid][$pclass->getId()] = $pclass;
-                        }
-                    }
-                    else {
-                        if($pclass->getType() === $type && $pclass->getCountry() === $country) {
+                    if($pclass->getEid() === $eid && $pclass->getCountry() === $country) {
+                        if($pclass->getType() === $type || $type === null) {
                             $tmp[$eid][$pclass->getId()] = $pclass;
                         }
                     }
