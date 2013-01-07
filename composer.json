@@ -1,0 +1,24 @@
+{
+    "name": "e-butik/klarna-php-api",
+    "description": "Klarna's PHP API",
+    "homepage": "http://integration.klarna.com",
+    "license": "BSD-2",
+    "type": "library",
+    "autoload": {
+        "classmap": [
+            "Country.php",
+            "Currency.php",
+            "Encoding.php",
+            "Exceptions.php",
+            "Flags.php",
+            "Klarna.php",
+            "klarnaaddr.php",
+            "klarnacalc.php",
+            "klarnaconfig.php",
+            "klarnapclass.php",
+            "Language.php",
+            "pclasses/",
+            "checkout/"
+        ]
+    }
+}
