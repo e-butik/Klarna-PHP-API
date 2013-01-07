@@ -69,6 +69,13 @@ class KlarnaEncoding
     const PNO_NL = 7;
 
     /**
+     * PNO/SSN encoding for Austria.
+     *
+     * @var int
+     */
+    const PNO_AT = 8;
+
+    /**
      * Encoding constant for customer numbers.
      *
      * @see Klarna::setCustomerNo()
@@ -96,6 +103,35 @@ class KlarnaEncoding
      * @var int
      */
     const BANK_BIC_ACC_NO = 1003;
+
+    /**
+     * Returns the constant for the wanted country.
+     *
+     * @param string $country country
+     *
+     * @return int
+     */
+    public static function get($country)
+    {
+        switch (strtoupper($country)) {
+        case "DE":
+            return KlarnaEncoding::PNO_DE;
+        case "DK":
+            return KlarnaEncoding::PNO_DK;
+        case "FI":
+            return KlarnaEncoding::PNO_FI;
+        case "NL":
+            return KlarnaEncoding::PNO_NL;
+        case "NO":
+            return KlarnaEncoding::PNO_NO;
+        case "SE":
+            return KlarnaEncoding::PNO_SE;
+        case "AT":
+            return KlarnaEncoding::PNO_AT;
+        default:
+            return -1;
+        }
+    }
 
     /**
      * Returns a regexp string for the specified encoding constant.

@@ -44,7 +44,7 @@ class Klarna
      *
      * @var string
      */
-    protected $VERSION = 'php:api:2.2.1';
+    protected $VERSION = 'php:api:2.3.0';
 
     /**
      * Klarna protocol identifier.
@@ -276,6 +276,14 @@ class Klarna
     protected $travelInfo = array();
 
     /**
+     * An array of named activate info
+     *
+     * @ignore
+     * @var array
+     */
+    protected $activateInfo = array();
+
+    /**
      * An array of named session id's.<br>
      * E.g. "dev_id_1" => ...<br>
      *
@@ -459,23 +467,17 @@ class Klarna
         $this->_eid = $this->config['eid'];
         $this->_secret = $this->config['secret'];
 
-        if (!is_numeric($this->config['country'])
-            && strlen($this->config['country']) == 2
-        ) {
-            $this->setCountry($this->config['country']);
-        } else {
-            //Set the country specific attributes.
-            try {
-                $this->hasFields('country', 'language', 'currency');
+        //Set the country specific attributes.
+        try {
+            $this->hasFields('country', 'language', 'currency');
 
-                //If hasFields doesn't throw exception we can set them all.
-                $this->setCountry($this->config['country']);
-                $this->setLanguage($this->config['language']);
-                $this->setCurrency($this->config['currency']);
-            } catch(Exception $e) {
-                //fields missing for country, language or currency
-                $this->_country = $this->_language = $this->_currency = null;
-            }
+            //If hasFields doesn't throw exception we can set them all.
+            $this->setCountry($this->config['country']);
+            $this->setLanguage($this->config['language']);
+            $this->setCurrency($this->config['currency']);
+        } catch(Exception $e) {
+            //fields missing for country, language or currency
+            $this->_country = $this->_language = $this->_currency = null;
         }
 
         //Set addr and port according to mode.
@@ -688,19 +690,6 @@ class Klarna
         $this->_checkCurrency($locale['currency']);
         $this->_checkLanguage($locale['language']);
 
-        if (!KlarnaCountry::checkCurrency(
-            $locale['country'], $locale['currency']
-        )
-        ) {
-            throw new Klarna_CountryCurrencyMismatchException($country, $currency);
-        }
-        if (!KlarnaCountry::checkLanguage(
-            $locale['country'], $locale['language']
-        )
-        ) {
-            throw new Klarna_CountryLanguageMismatchException($country, $language);
-        }
-
         return $locale;
     }
 
@@ -723,13 +712,10 @@ class Klarna
         if (!is_numeric($country)
             && (strlen($country) == 2 || strlen($country) == 3)
         ) {
-            $this->setCountry(self::getCountryForCode($country));
-            $this->setCurrency($this->getCurrencyForCountry());
-            $this->setLanguage($this->getLanguageForCountry());
-        } else {
-            $this->_checkCountry($country);
-            $this->_country = $country;
+            $country = KlarnaCountry::fromCode($country);
         }
+        $this->_checkCountry($country);
+        $this->_country = $country;
     }
 
     /**
@@ -915,43 +901,12 @@ class Klarna
     }
 
     /**
-     * Checks set country against set currency and returns true if they match.
-     * {@link KlarnaCountry} or {@link KlarnaCurrency} constants can be used,
-     * or letter codes. Uses set values if parameter is null.
-     *
-     * E.g. Klarna allows Euro with Germany, Netherlands and Finland, thus
-     * true will be returned.
-     *
-     * @param string|int $country  {@link KlarnaCountry}
-     * @param string|int $currency {@link KlarnaCurrency}
-     *
-     * @throws KlarnaException
-     * @return bool
-     */
-    public function checkCountryCurrency($country = null, $currency = null)
-    {
-        if ($country === null) {
-            $country = $this->_country;
-        } else if (!is_numeric($country)
-            && (strlen($country) == 2 || strlen($country) == 3)
-        ) {
-            $country = self::getCountryForCode($country);
-        }
-
-        if ($currency === null) {
-            $currency = $this->_currency;
-        } else if (!is_numeric($currency) && strlen($currency) == 3) {
-            $currency = self::getCurrencyForCode($currency);
-        }
-
-        return KlarnaCountry::checkCurrency($country, $currency);
-    }
-
-    /**
      * Returns the {@link KlarnaLanguage language} constant for the specified
      * or set country.
      *
      * @param int $country {@link KlarnaCountry Country} constant.
+     *
+     * @deprecated Do not use.
      *
      * @return int|false if no match otherwise KlarnaLanguage constant.
      */
@@ -974,6 +929,8 @@ class Klarna
      *
      * @param int $country {@link KlarnaCountry country} constant.
      *
+     * @deprecated Do not use.
+     *
      * @return int|false {@link KlarnaCurrency currency} constant.
      */
     public function getCurrencyForCountry($country = null)
@@ -985,7 +942,6 @@ class Klarna
     }
 
     /**
-     * <b>STILL UNDER DEVELOPMENT</b><br>
      * Sets the session id's for various device identification,
      * behaviour identification software.
      *
@@ -1012,7 +968,6 @@ class Klarna
     }
 
     /**
-     * <b>STILL UNDER DEVELOPMENT</b><br>
      * Sets the shipment information for the upcoming transaction.<br>
      *
      * Using this method is optional.
@@ -1043,7 +998,36 @@ class Klarna
     }
 
     /**
-     * <b>STILL UNDER DEVELOPMENT</b><br>
+     * Sets the Activation information for the upcoming transaction.<br>
+     *
+     * Using this method is optional.
+     *
+     * <b>Available named values are</b>:<br>
+     * int    - flags<br>
+     * int    - bclass<br>
+     * string - orderid1<br>
+     * string - orderid2<br>
+     * string - ocr<br>
+     * string - reference<br>
+     * string - reference_code<br>
+     * string - cust_no<br>
+     *
+     * Make sure you send in the values as the right data type.<br>
+     * Use strval, intval or similar methods to ensure the right type is sent.
+     *
+     * @param string $name  key
+     * @param mixed  $value value
+     *
+     * @see setShipmentInfo
+     *
+     * @return void
+     */
+    public function setActivateInfo($name, $value)
+    {
+        $this->activateInfo[$name] = $value;
+    }
+
+    /**
      * Sets the extra information for the upcoming transaction.<br>
      *
      * Using this method is optional.
@@ -1080,7 +1064,6 @@ class Klarna
     }
 
     /**
-     * <b>STILL UNDER DEVELOPMENT</b><br>
      * Sets the income expense information for the upcoming transaction.<br>
      *
      * Using this method is optional.
@@ -1110,7 +1093,6 @@ class Klarna
     }
 
     /**
-     * <b>STILL UNDER DEVELOPMENT</b><br>
      * Sets the bank information for the upcoming transaction.<br>
      *
      * Using this method is optional.
@@ -1141,7 +1123,6 @@ class Klarna
     }
 
     /**
-     * <b>STILL UNDER DEVELOPMENT</b><br>
      * Sets the travel information for the upcoming transaction.<br>
      *
      * Using this method is optional.
@@ -1179,9 +1160,13 @@ class Klarna
      */
     public function getClientIP()
     {
-        //Proxy handling.
-        $tmp_ip = $_SERVER['REMOTE_ADDR'];
+        $tmp_ip = '';
         $x_fwd = null;
+
+        //Proxy handling.
+        if (array_key_exists('REMOTE_ADDR', $_SERVER)) {
+            $tmp_ip = $_SERVER['REMOTE_ADDR'];
+        }
 
         if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
             $x_fwd = $_SERVER["HTTP_X_FORWARDED_FOR"];
@@ -1361,172 +1346,9 @@ class Klarna
     {
         $this->_checkLocale();
 
+        $country = KlarnaCountry::getCode($this->_country);
 
-        switch ($this->_country) {
-        case KlarnaCountry::DE:
-            if ($this->_currency !== KlarnaCurrency::EUR
-                || $this->_language !== KlarnaLanguage::DE
-            ) {
-                throw new Klarna_CountryLanguageMismatchException(
-                    $this->_currency, $this->_language
-                );
-            }
-            return KlarnaEncoding::PNO_DE;
-        case KlarnaCountry::DK:
-            if ($this->_currency !== KlarnaCurrency::DKK
-                || $this->_language !== KlarnaLanguage::DA
-            ) {
-                throw new Klarna_CountryLanguageMismatchException(
-                    $this->_currency, $this->_language
-                );
-            }
-            return KlarnaEncoding::PNO_DK;
-        case KlarnaCountry::FI:
-            if ($this->_currency !== KlarnaCurrency::EUR
-                || ($this->_language !== KlarnaLanguage::FI
-                && $this->_language !== KlarnaLanguage::SV)
-            ) {
-                throw new Klarna_CountryLanguageMismatchException(
-                    $this->_currency, $this->_language
-                );
-            }
-            return KlarnaEncoding::PNO_FI;
-        case KlarnaCountry::NL:
-            if ($this->_currency !== KlarnaCurrency::EUR
-                || $this->_language !== KlarnaLanguage::NL
-            ) {
-                throw new Klarna_CountryLanguageMismatchException(
-                    $this->_currency, $this->_language
-                );
-            }
-            return KlarnaEncoding::PNO_NL;
-        case KlarnaCountry::NO:
-            if ($this->_currency !== KlarnaCurrency::NOK
-                || $this->_language !== KlarnaLanguage::NB
-            ) {
-                throw new Klarna_CountryLanguageMismatchException(
-                    $this->_currency, $this->_language
-                );
-            }
-            return KlarnaEncoding::PNO_NO;
-        case KlarnaCountry::SE:
-            if ($this->_currency !== KlarnaCurrency::SEK
-                || $this->_language !== KlarnaLanguage::SV
-            ) {
-                throw new Klarna_CountryLanguageMismatchException(
-                    $this->_currency, $this->_language
-                );
-            }
-            return KlarnaEncoding::PNO_SE;
-        default:
-            throw new Klarna_UnsupportedCountryException(
-                $this->_country
-            );
-        }
-    }
-
-    /**
-     * The purpose of this method is to check if the customer has answered
-     * the ILT questions. If the questions need to be answered, an array
-     * will be returned with a list of question ids in 'ilt_question_ids'
-     * and a url where question data can be retrieved in 'ilt_question_url'.
-     * The answers should be set using {@link Klarna::setIncomeInfo()}
-     * using the same identifiers
-     *
-     * Note:
-     * You need to call {@link Klarna::setAddress()} with
-     * {@link KlarnaFlags::IS_SHIPPING} before calling this method.
-     *
-     * An example could be:<br>
-     * <code>
-     * array(
-     *     'ilt_question_url' => 'http://static.klarna.com/external/ilt/data',
-     *     'ilt_question_ids' => array('ilt_1', 'ilt_2', 'ilt_3')
-     * )
-     * </code>
-     *
-     * You need to render this question and then send the identifier<br>
-     * and the user supplied answer in {@link Klarna::setIncomeInfo()}.
-     *
-     * @param string    $pno      Personal number, SSN, date of birth, etc.
-     * @param int       $gender   {@link KlarnaFlags::FEMALE} or
-     *                            {@link KlarnaFlags::MALE},
-     *                            null or "" for unspecified.
-     * @param int|float $amount   Amount including VAT.
-     * @param int       $pclass   The PClass
-     * @param int       $encoding {@link KlarnaEncoding Encoding} constant for
-     *                            the PNO parameter.
-     *
-     * @throws KlarnaException
-     * @return array
-     */
-    public function checkILT(
-        $pno, $gender, $amount, $pclass = -1, $encoding = null
-    ) {
-        $this->_checkLocale();
-
-        $this->_checkAmount($amount);
-
-        //Get the PNO/SSN encoding constant.
-        if ($encoding === null) {
-            $encoding = $this->getPNOEncoding();
-        }
-        $this->_checkPNO($pno, $encoding);
-
-        if ($gender === 'm') {
-            $gender = KlarnaFlags::MALE;
-        } else if ($gender === 'f') {
-            $gender = KlarnaFlags::FEMALE;
-        }
-
-        if ($gender !== null && strlen($gender) > 0) {
-            $this->_checkInt($gender, 'gender');
-        }
-
-        if (!($this->shipping instanceof KlarnaAddr)) {
-            throw new Klarna_MissingAddressException;
-        }
-
-        $shipping = $this->assembleAddr($this->shipping);
-
-        //Shipping country must match specified country!
-        if (strlen($shipping['country']) > 0
-            && ($shipping['country'] !== $this->_country)
-        ) {
-            throw new Klarna_ShippingCountryException;
-        }
-
-        $digestSecret = self::digest(
-            $this->colon(
-                $this->_eid,
-                $pno . $gender,
-                $pclass,
-                $amount,
-                $this->_secret
-            )
-        );
-
-        $paramList = array(
-            $pno,
-            $gender,
-            $shipping,
-            $this->_currency,
-            $this->_country,
-            $this->_language,
-            $this->_eid,
-            $digestSecret,
-            $encoding,
-            $pclass,
-            $amount
-        );
-
-        self::printDebug("check_ilt array", $paramList);
-
-        $result = $this->xmlrpc_call('check_ilt', $paramList);
-
-        self::printDebug("check_ilt result array", $result);
-
-        return $result;
+        return KlarnaEncoding::get($country);
     }
 
     /**
@@ -1763,7 +1585,6 @@ class Klarna
      * {@link KlarnaFlags::NO_FLAG}<br>
      * {@link KlarnaFlags::TEST_MODE}<br>
      * {@link KlarnaFlags::AUTO_ACTIVATE}<br>
-     * {@link KlarnaFlags::PRE_PAY}<br>
      * {@link KlarnaFlags::SENSITIVE_ORDER}<br>
      * {@link KlarnaFlags::RETURN_OCR}<br>
      * {@link KlarnaFlags::M_PHONE_TRANSACTION}<br>
@@ -2270,6 +2091,234 @@ class Klarna
         return ($result  == 'ok') ? true : false;
     }
 
+    /**
+     * Update the reservation matching the given reservation number.
+     *
+     * @param string  $rno   Reservation number
+     * @param boolean $clear clear set data aftre updating. Defaulted to true.
+     *
+     * @throws KlarnaException if no RNO is given, or if an error is recieved
+     *         from Klarna Online.
+     *
+     * @return true if the update was successful
+     */
+    public function update($rno, $clear = true)
+    {
+        $this->_checkRNO($rno);
+
+        // All info that is sent in is part of the digest secret, in this order:
+        // [
+        //      proto_vsn, client_vsn, eid, rno, careof, street, zip, city,
+        //      country, fname, lname, careof, street, zip, city, country,
+        //      fname, lname, artno, qty, orderid1, orderid2
+        // ].
+        // The address part appears twice, that is one per address that
+        // changes. If no value is sent in for an optional field, there
+        // is no entry for this field in the digest secret. Shared secret
+        // is added at the end of the digest secret.
+        $digestArray = array(
+            str_replace('.', ':', $this->PROTO),
+            $this->VERSION,
+            $this->_eid,
+            $rno
+        );
+        $digestArray = array_merge(
+            $digestArray, $this->_addressDigestPart($this->shipping)
+        );
+        $digestArray = array_merge(
+            $digestArray, $this->_addressDigestPart($this->billing)
+        );
+        if (is_array($this->goodsList) && $this->goodsList !== array()) {
+            foreach ($this->goodsList as $goods) {
+                if (strlen($goods["goods"]["artno"]) > 0) {
+                    $digestArray[] = $goods["goods"]["artno"];
+                } else {
+                    $digestArray[] = $goods["goods"]["title"];
+                }
+                $digestArray[] = $goods["qty"];
+            }
+        }
+        foreach ($this->orderid as $orderid) {
+            $digestArray[] = $orderid;
+        }
+        $digestArray[] = $this->_secret;
+
+        $digestSecret = $this->digest(implode(':', array_filter($digestArray)));
+
+
+        $shipping = array();
+        $billing = array();
+        if ($this->shipping !== null && $this->shipping instanceof KlarnaAddr) {
+            $shipping = $this->shipping->toArray();
+        }
+        if ($this->billing !== null && $this->billing instanceof KlarnaAddr) {
+            $billing = $this->billing->toArray();
+        }
+        $paramList = array(
+            $this->_eid,
+            $digestSecret,
+            $rno,
+            array(
+                'goods_list' => $this->goodsList,
+                'dlv_addr' => $shipping,
+                'bill_addr' => $billing,
+                'orderid1' => $this->orderid[0],
+                'orderid2' => $this->orderid[1]
+            )
+        );
+
+        self::printDebug('update array', $paramList);
+
+        $result = $this->xmlrpc_call('update', $paramList);
+
+        self::printDebug('update result', $result);
+
+        return ($result === 'ok');
+    }
+
+    /**
+     * Help function to sort the address for update digest.
+     *
+     * @param KlarnaAddr|null $address KlarnaAddr object or null
+     *
+     * @return array
+     */
+    private function _addressDigestPart(KlarnaAddr $address = null)
+    {
+        if ($address === null) {
+            return array();
+        }
+
+        $keyOrder = array(
+            'careof', 'street', 'zip', 'city', 'country', 'fname', 'lname'
+        );
+
+        $holder = $address->toArray();
+        $digest = array();
+
+        foreach ($keyOrder as $key) {
+            if ($holder[$key] != "") {
+                $digest[] = $holder[$key];
+            }
+        }
+
+        return $digest;
+    }
+
+    /**
+     * Activate the reservation matching the given reservation number.
+     * Optional information should be set in ActivateInfo.
+     *
+     * To perform a partial activation, use the addArtNo function to specify
+     * which items in the reservation to include in the activation.
+     *
+     * @param string  $rno   Reservation number
+     * @param string  $ocr   optional OCR number to attach to the reservation when
+     *                       activating. Overrides OCR specified in activateInfo.
+     * @param string  $flags optional flags to affect behavior. If specified it
+     *                       will overwrite any flag set in activateInfo.
+     * @param boolean $clear clear set data after activating. Defaulted to true.
+     *
+     * @throws KlarnaException when the RNO is not specified, or if an error
+     *         is recieved from Klarna Online.
+     * @return A string array with risk status and reservation number.
+     */
+    public function activate(
+        $rno, $ocr = null, $flags = null, $clear = true
+    ) {
+        $this->_checkRNO($rno);
+
+        // Overwrite any OCR set on activateInfo if supplied here since this
+        // method call is more specific.
+        if ($ocr !== null) {
+            $this->setActivateInfo('ocr', $ocr);
+        }
+
+        // If flags is specified set the flag supplied here to activateInfo.
+        if ($flags !== null) {
+            $this->setActivateInfo('flags', $flags);
+        }
+
+        //Assume normal shipment unless otherwise specified.
+        if (!array_key_exists('delay_adjust', $this->shipInfo)) {
+            $this->setShipmentInfo('delay_adjust', KlarnaFlags::NORMAL_SHIPMENT);
+        }
+
+        // Append shipment info to activateInfo
+        $this->activateInfo['shipment_info'] = $this->shipInfo;
+
+        // Unlike other calls, if NO_FLAG is specified it should not be sent in
+        // at all.
+        if (array_key_exists('flags', $this->activateInfo)
+            && $this->activateInfo['flags'] === KlarnaFlags::NO_FLAG
+        ) {
+            unset($this->activateInfo['flags']);
+        }
+
+        // Build digest. Any field in activateInfo that is set is included in
+        // the digest.
+        $digestArray = array(
+            str_replace('.', ':', $this->PROTO),
+            $this->VERSION,
+            $this->_eid,
+            $rno
+        );
+
+        $optionalDigestKeys = array(
+            'bclass',
+            'cust_no',
+            'flags',
+            'ocr',
+            'orderid1',
+            'orderid2',
+            'reference',
+            'reference_code'
+        );
+
+        foreach ($optionalDigestKeys as $key) {
+            if (array_key_exists($key, $this->activateInfo)) {
+                $digestArray[] = $this->activateInfo[$key];
+            }
+        }
+
+        if (array_key_exists('delay_adjust', $this->activateInfo['shipment_info'])) {
+            $digestArray[] = $this->activateInfo['shipment_info']['delay_adjust'];
+        }
+
+        // If there are any artnos added with addArtNo, add them to the digest
+        // and to the activateInfo
+        if (is_array($this->artNos)) {
+            foreach ($this->artNos as $artNo) {
+                $digestArray[] = $artNo['artno'];
+                $digestArray[] = $artNo['qty'];
+            }
+            $this->setActivateInfo('artnos', $this->artNos);
+        }
+
+        $digestArray[] = $this->_secret;
+        $digestSecret = self::digest(implode(':', array_filter($digestArray)));
+
+        // Create the parameter list.
+        $paramList = array(
+            $this->_eid,
+            $digestSecret,
+            $rno,
+            $this->activateInfo
+        );
+
+        self::printDebug('activate array', $paramList);
+
+        $result = $this->xmlrpc_call('activate', $paramList);
+
+        self::printDebug('activate result', $result);
+
+        // Clear the state if specified.
+        if ($clear) {
+            $this->clear();
+        }
+
+        return $result;
+    }
 
     /**
      * Activates a previously created reservation.
@@ -2330,7 +2379,11 @@ class Klarna
             $encoding = $this->getPNOEncoding();
         }
 
-        $this->_checkPNO($pno, $encoding);
+        // Only check PNO if it is not explicitly null.
+        if ($pno !== null) {
+            $this->_checkPNO($pno, $encoding);
+        }
+
         $this->_checkRNO($rno);
 
         if ($gender !== null && strlen($gender) > 0) {
@@ -2819,11 +2872,14 @@ class Klarna
      * {@link KlarnaFlags::INC_VAT}<br>
      * {@link KlarnaFlags::NO_FLAG}, <b>NOT RECOMMENDED!</b><br>
      *
-     * @param string $invNo  Invoice number.
-     * @param int    $amount The amount given as a discount.
-     * @param float  $vat    VAT in percent, e.g. 22.2 for 22.2%.
-     * @param int    $flags  If amount is {@link KlarnaFlags::INC_VAT including}
-     *                       or {@link KlarnaFlags::NO_FLAG excluding} VAT.
+     * @param string $invNo       Invoice number.
+     * @param int    $amount      The amount given as a discount.
+     * @param float  $vat         VAT in percent, e.g. 22.2 for 22.2%.
+     * @param int    $flags       If amount is
+     *                            {@link KlarnaFlags::INC_VAT including} or
+     *                            {@link KlarnaFlags::NO_FLAG excluding} VAT.
+     * @param string $description Optional custom text to present as discount
+     *                            in the invoice.
      *
      * @link http://integration.klarna.com/en/api/invoice-handling-functions
      *       /functions/returnamount
@@ -2832,12 +2888,16 @@ class Klarna
      * @return string  Invoice number.
      */
     public function returnAmount(
-        $invNo, $amount, $vat, $flags = KlarnaFlags::INC_VAT
+        $invNo, $amount, $vat, $flags = KlarnaFlags::INC_VAT, $description = ""
     ) {
         $this->_checkInvNo($invNo);
         $this->_checkAmount($amount);
         $this->_checkVAT($vat);
         $this->_checkInt($flags, 'flags');
+
+        if ($description == null) {
+            $description = "";
+        }
 
         $digestSecret = self::digest(
             $this->colon($this->_eid, $invNo, $this->_secret)
@@ -2848,7 +2908,8 @@ class Klarna
             $amount,
             $vat,
             $digestSecret,
-            $flags
+            $flags,
+            $description
         );
 
         self::printDebug('return_amount', $paramList);
@@ -3326,7 +3387,7 @@ class Klarna
     private function _fetchPClasses($storage, $country, $language, $currency)
     {
         $digestSecret = self::digest(
-            $this->colon($this->_eid, $currency, $this->_secret)
+            $this->_eid . ":" . $currency . ":" . $this->_secret
         );
         $paramList = array(
             $this->_eid,
@@ -3785,6 +3846,7 @@ class Klarna
         $this->extraInfo = array();
         $this->bankInfo = array();
         $this->incomeInfo = array();
+        $this->activateInfo = array();
 
         $this->reference = "";
         $this->reference_code = "";
@@ -3830,13 +3892,15 @@ class Klarna
 
     /**
      * Implodes parameters with delimiter ':'.
+     * Null and "" values are ignored by the colon function to
+     * ensure there is not several colons in succession.
      *
      * @return string Colon separated string.
      */
     public static function colon(/* variable parameters */)
     {
         $args = func_get_args();
-        return implode(':', $args);
+        return implode(':', array_filter($args));
     }
 
     /**

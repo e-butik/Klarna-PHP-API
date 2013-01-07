@@ -495,22 +495,7 @@ class KlarnaAddr
      */
     public function getCountryCode()
     {
-        switch($this->country) {
-        case KlarnaCountry::DE:
-            return 'de';
-        case KlarnaCountry::DK:
-            return 'dk';
-        case KlarnaCountry::FI:
-            return 'fi';
-        case KlarnaCountry::NL:
-            return 'nl';
-        case KlarnaCountry::NO:
-            return 'no';
-        case KlarnaCountry::SE:
-            return 'se';
-        default:
-            throw new Klarna_UnsupportedCountryException($this->country);
-        }
+        return KlarnaCountry::getCode($this->country);
     }
 
     /**

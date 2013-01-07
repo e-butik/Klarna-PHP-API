@@ -2,9 +2,64 @@
 Klarna PHP API
 =====================
 
+v2.3.0
+---------------
+Date: 2012-09-19
+
+    Rickard D. <support@klarna.com>
+        Klarna.php (activateReservation) :
+            Change to allow NULL to be sent in as PNO when activating a
+            reservation. Any other value than null will still trigger a
+            verification that a string longer than 0 characters is sent
+            as PNO.
+
+        Klarna.php (activate) : new function
+            New function to activate a reservation using minimal information.
+            Optional information for the activate call should be set using
+            setActivateInformation.
+            To partially activate a reservation, use Klarna::addArtNo() function
+            (replaces splitReservation).
+
+        Klarna.php (update) : new function
+            New function to update a reservation using minimal information.
+            Use setAddress to update address, addArticle to update an article in
+            the goodslist and setEstoreInfo to update order id:s.
+
+        Klarna.php (checkCountryCurrency) : removed function
+            As this function does not scale and does not belong in a library it has
+            been removed.
+
+        Country.php () :
+            Added all available country constants.
+
+        Language.php () :
+            Added all available language constants.
+
+        Klarna.php (getLanguageForCountry) : deprecated
+                   (getCurrencyForCountry) : deprecated
+        Country.php (checkLanguage) : deprecated
+                    (checkCurrency) : deprecated
+                    (getLanguage) : deprecated
+                    (getCurrency) : deprecated
+            Deprecated functions that will not scale and will not be compatible for
+            any potential future markets.
+
+        Klarna.php (init, setCountry) :
+            Removed the automatic setting of currency and language when setting
+            the country. This functionality does not scale and was not consistent
+            depending on how you set the country.
+
+    Majid G. <support@klarna.com>
+        Klarna.php (addTransaction) :
+            Removing the link comment for PRE_PAY flag
+
+        Flags.php (KlarnaFlags) :
+            Adding deprecated comment for Flag 8 (PRE_PAY)
+
+
 v2.2.1
 ----------------
-Date: 2011-05-18
+Date: 2012-05-18
 
 David K. <support@klarna.com>
     Klarna.php (summarizeGoodsList)
@@ -17,7 +72,7 @@ David K. <support@klarna.com>
 
 v2.2.0
 ----------------
-Date: 2011-05-15
+Date: 2012-05-14
 
 Rickard D. <support@klarna.com>
     Klarna.php (assembleAddress) :
@@ -26,7 +81,7 @@ Rickard D. <support@klarna.com>
 
     klarnaaddr.php () :
         Removed validation of field contets. Now possible to set all fields to
-        empty strings if you want.
+        empty strings if you wan.
 
     Klarna.php (addTransaction, reserveAmount, activateReservation) :
         If $gender is sent in as an empty string, treat it as null.
@@ -111,7 +166,7 @@ Date: 2011-08-19
 
 * Added support for stronger cryptographic hashes
 
-	The default is now SHA-512 instead of MD5
+    The default is now SHA-512 instead of MD5
 
 * Experimental generic database storage using PDO
 

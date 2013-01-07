@@ -210,6 +210,8 @@ class KlarnaFlags
      * Creates a pre-pay invoice.
      *
      * @var int
+     *
+     * @deprecated Do not use.
      */
     const PRE_PAY = 8;
 

@@ -371,35 +371,6 @@ class Klarna_CountryLanguageMismatchException extends KlarnaException
 }
 
 /**
- * Exception for Unsupported Country
- *
- * @category  Payment
- * @package   KlarnaAPI
- * @author    MS Dev <ms.modules@klarna.com>
- * @copyright 2012 Klarna AB (http://klarna.com)
- * @license   http://opensource.org/licenses/BSD-2-Clause BSD-2
- * @link      http://integration.klarna.com/
- */
-class Klarna_UnsupportedCountryException extends KlarnaException
-{
-    /**
-     * Constructor
-     *
-     * @param mixed $country country
-     */
-    public function __construct($country)
-    {
-        $countryCode = KlarnaCountry::getCode($country);
-        if ($countryCode === null) {
-            $countryCode = $country;
-        }
-        parent::__construct(
-            "Unknown/unsupported country! ({$countryCode})! ",
-            50025
-        );
-    }
-}
-/**
  * Exception for Shipping country being different from set country
  *
  * @category  Payment

@@ -606,20 +606,23 @@ class KlarnaCalc
      */
     public static function get_lowest_payment_for_account($country)
     {
-        switch ($country) {
-        case KlarnaCountry::SE:
+        $country = KlarnaCountry::getCode($country);
+
+        switch (strtoupper($country)) {
+        case "SE":
             return 50.0;
-        case KlarnaCountry::NO:
+        case "NO":
             return 95.0;
-        case KlarnaCountry::FI:
+        case "FI":
             return 8.95;
-        case KlarnaCountry::DK:
+        case "DK":
             return 89.0;
-        case KlarnaCountry::DE:
-        case KlarnaCountry::NL:
+        case "DE":
+        case "NL":
+        case "AT":
             return 6.95;
         default:
-            throw new Klarna_UnsupportedCountryException($country);
+            throw new KlarnaException("Invalid country {$country}");
         }
     }
 
@@ -634,11 +637,12 @@ class KlarnaCalc
     public static function pRound($value, $country)
     {
         $multiply = 1; //Round to closest integer
-
+        $country = KlarnaCountry::getCode($country);
         switch($country) {
-        case KlarnaCountry::FI:
-        case KlarnaCountry::DE:
-        case KlarnaCountry::NL:
+        case "FI":
+        case "DE":
+        case "NL":
+        case "AT":
             $multiply = 10; //Round to closest decimal
             break;
         }
