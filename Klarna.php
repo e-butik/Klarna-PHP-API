@@ -3976,7 +3976,7 @@ class Klarna
     {
         if (!self::$htmlentities) {
             self::$htmlentities = array();
-            $table = get_html_translation_table(HTML_ENTITIES, ENT_QUOTES);
+            $table = get_html_translation_table(HTML_ENTITIES, ENT_QUOTES, 'ISO-8859-1');
             foreach ($table as $char => $entity) {
                 self::$htmlentities[$entity] = '&#' . ord($char) . ';';
             }
