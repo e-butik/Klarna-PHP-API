@@ -2,9 +2,50 @@
 Klarna PHP API
 =====================
 
+v2.3.4
+---------------
+Date: 2013-05-03
+
+    Joakim L. <support@klarna.com>
+        Klarna.php
+            Update beta address to payment.testdrive.klarna.com
+
+v2.3.3
+---------------
+Date: 2013-03-28
+
+    Rickard D. <support@klarna.com>
+        Klarna.php (reserveAmount) :
+            No longer remove falsy values from the digest string.
+
+v2.3.2
+---------------
+Date: 2013-03-25
+
+    Rickard D. <support@klarna.com>
+        Klarna.php (reserveAmount) :
+            Allow reserveAmount calls with an amount of 0.
+
+v2.3.1
+---------------
+Date: 2012-12-07
+
+    Christer G. <support@klarna.com>
+        Klarna.php (getClientIP) :
+            Refactored to be more readable.
+
+    Rickard D. <support@klarna.com>
+        Klarna.php (setConfig) :
+            Configuration may now be an array, aswell as a and
+            ArrayAccess.
+
+    Majid G. <support@klarna.com>
+        Klarna.php (update) :
+            Removed rno validation from the library
+
 v2.3.0
 ---------------
-Date: 2012-09-19
+Date: 2012-09-17
 
     Rickard D. <support@klarna.com>
         Klarna.php (activateReservation) :
@@ -59,7 +100,7 @@ Date: 2012-09-19
 
 v2.2.1
 ----------------
-Date: 2012-05-18
+Date: 2011-05-18
 
 David K. <support@klarna.com>
     Klarna.php (summarizeGoodsList)

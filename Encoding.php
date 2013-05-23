@@ -227,7 +227,7 @@ class KlarnaEncoding
         case self::CELLNO:
             /**
              * Validates a cellno.
-             *
+             * @TODO Is this encoding only for Sweden?
              */
             return '/^07[\ \-0-9]{8,13}$/';
         default:

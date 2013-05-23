@@ -44,7 +44,7 @@ class Klarna
      *
      * @var string
      */
-    protected $VERSION = 'php:api:2.3.0';
+    protected $VERSION = 'php:api:2.4.0';
 
     /**
      * Klarna protocol identifier.
@@ -96,7 +96,7 @@ class Klarna
      *
      * @var string
      */
-    private static $_beta_addr = 'payment-beta.klarna.com';
+    private static $_beta_addr = 'payment.testdrive.klarna.com';
 
     /**
      * Indicates whether the communications is over SSL or not.
@@ -125,18 +125,11 @@ class Klarna
     protected $mode;
 
     /**
-     * The URL/Address used to communicate with Klarna.
+     * Associative array holding url information.
      *
-     * @var string
+     * @var array
      */
-    protected $addr;
-
-    /**
-     * The port number used to communicate with Klarna.
-     *
-     * @var int
-     */
-    protected $port;
+    private $_url;
 
     /**
      * The estore's identifier received from Klarna.
@@ -483,25 +476,42 @@ class Klarna
         //Set addr and port according to mode.
         $this->mode = (int)$this->config['mode'];
 
-        if ($this->mode === self::LIVE) {
-            $this->addr = self::$_live_addr;
-            $this->ssl = true;
+        $this->_url = array();
+
+        // If a custom url has been added to the config, use that as xmlrpc
+        // recipient.
+        if (isset($this->config['url'])) {
+            $this->_url = parse_url($this->config['url']);
+            if ($this->_url === false) {
+                $message = "Configuration value 'url' could not be parsed. " .
+                    "(Was: '{$this->config['url']}')";
+                Klarna::printDebug(__METHOD__, $message);
+                throw new InvalidArgumentException($message);
+            }
         } else {
-            $this->addr = self::$_beta_addr;
-            $this->ssl = true;
+
+            $this->_url['scheme'] = 'https';
+
+            if ($this->mode === self::LIVE) {
+                $this->_url['host'] = self::$_live_addr;
+            } else {
+                $this->_url['host'] = self::$_beta_addr;
+            }
+
+            if (isset($this->config['ssl'])
+                && (bool)$this->config['ssl'] === false
+            ) {
+                $this->_url['scheme'] = 'http';
+            }
         }
 
-        try {
-            $this->hasFields('ssl');
-            $this->ssl = (bool)$this->config['ssl'];
-        } catch(Exception $e) {
-            //No 'ssl' field ignore it...
-        }
-
-        if ($this->ssl) {
-             $this->port = 443;
-        } else {
-            $this->port = 80;
+        // If no port has been specified, deduce from url scheme
+        if (!array_key_exists('port', $this->_url)) {
+            if ($this->_url['scheme'] === 'https') {
+                $this->_url['port'] = 443;
+            } else {
+                $this->_url['port'] = 80;
+            }
         }
 
         try {
@@ -528,11 +538,16 @@ class Klarna
         $this->pcStorage = $this->config['pcStorage'];
         $this->pcURI = $this->config['pcURI'];
 
+        // Default path to '/' if not set.
+        if (!array_key_exists('path', $this->_url)) {
+            $this->_url['path'] = '/';
+        }
+
         $this->xmlrpc = new xmlrpc_client(
-            '/',
-            $this->addr,
-            $this->port,
-            ($this->ssl) ? 'https' : 'http'
+            $this->_url['path'],
+            $this->_url['host'],
+            $this->_url['port'],
+            $this->_url['scheme']
         );
 
         $this->xmlrpc->request_charset_encoding = 'ISO-8859-1';
@@ -614,9 +629,8 @@ class Klarna
      */
     public function setConfig(&$config)
     {
-        if (!$config instanceof ArrayAccess) {
-            throw new Klarna_InvalidConfigurationException;
-        }
+        $this->_checkConfig($config);
+
         $this->config = $config;
         $this->init();
     }
@@ -1173,17 +1187,9 @@ class Klarna
         }
 
         if (self::$x_forwarded_for && ($x_fwd !== null)) {
-            //Cut out the first IP address
-            $cpos = strpos($x_fwd, ',');
-            if ($cpos !== false) {
-                $tmp_ip = substr($x_fwd, 0, $cpos);
-                $x_fwd = substr($x_fwd, $cpos+2);
-            } else { //Only one IP address
-                $tmp_ip = $x_fwd;
-                $x_fwd = null;
-            }
+            $forwarded = explode(",", $x_fwd);
+            return trim($forwarded[0]);
         }
-        $this->_x_fwd = $x_fwd;
 
         return $tmp_ip;
     }
@@ -1291,7 +1297,7 @@ class Klarna
 
     /**
      * Returns an associative array used to send the address to Klarna.
-     *
+     * TODO: Kill it all
      *
      * @param KlarnaAddr $addr Address object to assemble.
      *
@@ -1942,7 +1948,7 @@ class Klarna
             $this->_checkAmount($amount);
         }
 
-        if ($amount <= 0) {
+        if ($amount < 0) {
             throw new Klarna_InvalidPriceException($amount);
         }
 
@@ -1969,7 +1975,7 @@ class Klarna
         $this->initCheckout($this, $this->_eid);
 
         $digestSecret = self::digest(
-            $this->colon($this->_eid, $pno, $amount, $this->_secret)
+            "{$this->_eid}:{$pno}:{$amount}:{$this->_secret}"
         );
 
         $paramList = array(
@@ -2104,7 +2110,7 @@ class Klarna
      */
     public function update($rno, $clear = true)
     {
-        $this->_checkRNO($rno);
+        $rno = strval($rno);
 
         // All info that is sent in is part of the digest secret, in this order:
         // [
@@ -2970,13 +2976,20 @@ class Klarna
     {
         $this->_checkInvNo($invNo);
         $this->_checkCredNo($credNo);
-        $this->_checkArtNos($this->artNos);
+
+        if ($this->goodsList === null || empty($this->goodsList)) {
+            $this->_checkArtNos($this->artNos);
+        }
 
         //function activate_part_digest
         $string = $this->_eid . ":" . $invNo . ":";
-        foreach ($this->artNos as $artNo) {
-            $string .= $artNo["artno"] . ":". $artNo["qty"] . ":";
+
+        if ($this->artNos !== null && !empty($this->artNos)) {
+            foreach ($this->artNos as $artNo) {
+                $string .= $artNo["artno"] . ":". $artNo["qty"] . ":";
+            }
         }
+
         $digestSecret = self::digest($string . $this->_secret);
         //end activate_part_digest
 
@@ -2987,6 +3000,11 @@ class Klarna
             $credNo,
             $digestSecret
         );
+
+        if ($this->goodsList !== null && !empty($this->goodsList)) {
+            $paramList[] = 0;
+            $paramList[] = $this->goodsList;
+        }
 
         $this->artNos = array();
 
@@ -3454,9 +3472,7 @@ class Klarna
             EXTR_OVERWRITE
         );
 
-        if (!($this->config instanceof ArrayAccess)) {
-            throw new Klarna_IncompleteConfigurationException;
-        }
+        $this->_checkConfig();
 
         $pclasses = $this->getPCStorage();
         try {
@@ -3482,12 +3498,10 @@ class Klarna
      */
     public function clearPClasses()
     {
-        if ($this->config instanceof ArrayAccess) {
-            $pclasses = $this->getPCStorage();
-            $pclasses->clear($this->pcURI);
-        } else {
-            throw new Klarna_IncompleteConfigurationException;
-        }
+        $this->_checkConfig();
+
+        $pclasses = $this->getPCStorage();
+        $pclasses->clear($this->pcURI);
     }
 
     /**
@@ -3508,9 +3522,8 @@ class Klarna
      */
     public function getPClasses($type = null)
     {
-        if (!($this->config instanceof ArrayAccess)) {
-            throw new Klarna_IncompleteConfigurationException;
-        }
+        $this->_checkConfig();
+
         if (!$this->pclasses) {
             $this->pclasses = $this->getPCStorage();
             $this->pclasses->load($this->pcURI);
@@ -3550,9 +3563,7 @@ class Klarna
             throw new Klarna_InvalidTypeException('id', 'integer');
         }
 
-        if (!($this->config instanceof ArrayAccess)) {
-            throw new Klarna_IncompleteConfigurationException;
-        }
+        $this->_checkConfig();
 
         if (!$this->pclasses || !($this->pclasses instanceof PCStorage)) {
             $this->pclasses = $this->getPCStorage();
@@ -3750,9 +3761,8 @@ class Klarna
      */
     protected function xmlrpc_call($method, $array)
     {
-        if (!($this->xmlrpc instanceof xmlrpc_client)) {
-            throw new Klarna_IncompleteConfigurationException;
-        }
+        $this->_checkConfig();
+
         if (!isset($method) || !is_string($method)) {
             throw new Klarna_InvalidTypeException('method', 'string');
         }
@@ -3872,14 +3882,16 @@ class Klarna
     {
         $fp = @fsockopen('udp://'.self::$_c_addr, 80, $errno, $errstr, 1500);
         if ($fp) {
-            $url = (($this->ssl) ? 'https://' : 'http://').$this->addr;
+            $uri = "{$this->_url['scheme']}://{$this->_url['host']}" .
+                    ":{$this->_url['port']}";
+
             $data = $this->pipe(
                 $this->_eid,
                 $method,
                 $time,
                 $selectTime,
                 $status,
-                $url.':'.$this->port
+                $uri
             );
             $digest = self::digest($this->pipe($data, $this->_secret));
 
@@ -4508,6 +4520,25 @@ class Klarna
         }
         $this->pcStorage = $pcStorage->getName();
         $this->pclasses = $pcStorage;
+    }
+
+    /**
+     * Ensure the configuration is of the correct type.
+     *
+     * @param array|ArrayAccess|null $config an optional config to validate
+     *
+     * @return void
+     */
+    private function _checkConfig($config = null)
+    {
+        if ($config === null) {
+            $config = $this->config;
+        }
+        if (!($config instanceof ArrayAccess)
+            && !is_array($config)
+        ) {
+            throw new Klarna_IncompleteConfigurationException;
+        }
     }
 
 } //End Klarna
