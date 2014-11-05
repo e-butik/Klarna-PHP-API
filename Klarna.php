@@ -550,6 +550,8 @@ class Klarna
             $this->_url['scheme']
         );
 
+        $sslCertificateMatchHost = 2;
+        $this->xmlrpc->setSSLVerifyHost($sslCertificateMatchHost);
         $this->xmlrpc->request_charset_encoding = 'ISO-8859-1';
     }
 
